@@ -2,24 +2,19 @@ import sqlite3
 import os
 from datetime import datetime
 
-# Support Docker environment variable for database path
 DATABASE_PATH = os.getenv('DATABASE_PATH', 'isp_recovery.db')
 DATABASE = DATABASE_PATH
 
 def get_db_connection():
-    """Get database connection"""
-    # Create directory if it doesn't exist (for Docker volume)
     db_path = DATABASE
     db_dir = os.path.dirname(db_path)
     
-    # If path has directory, ensure it exists
     if db_dir and db_dir != '' and not os.path.exists(db_dir):
         try:
             os.makedirs(db_dir, exist_ok=True)
         except Exception:
-            pass  # If we can't create dir, try anyway
+            pass
     
-    # If directory creation failed or path is just filename, use current directory
     if db_dir and not os.path.exists(db_dir):
         db_path = os.path.basename(DATABASE)
     
@@ -28,7 +23,6 @@ def get_db_connection():
     return conn
 
 def init_db():
-    """Initialize the database with required tables"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -50,13 +44,11 @@ def init_db():
     conn.close()
 
 def add_customer(name, phone, address, package, payment_amount):
-    """Add a new customer"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
     created_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
-    # Set default values for optional fields if empty
     phone = phone or 'N/A'
     address = address or 'N/A'
     
@@ -71,7 +63,6 @@ def add_customer(name, phone, address, package, payment_amount):
     return customer_id
 
 def get_all_customers():
-    """Get all customers"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -82,7 +73,6 @@ def get_all_customers():
     return customers
 
 def get_customer_by_id(customer_id):
-    """Get customer by ID"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -93,7 +83,6 @@ def get_customer_by_id(customer_id):
     return customer
 
 def update_customer(customer_id, name, phone, address, package, payment_amount):
-    """Update customer information"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -107,7 +96,6 @@ def update_customer(customer_id, name, phone, address, package, payment_amount):
     conn.close()
 
 def delete_customer(customer_id):
-    """Delete a customer"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -117,7 +105,6 @@ def delete_customer(customer_id):
     conn.close()
 
 def update_payment_status(customer_id, payment_status):
-    """Update payment status for a customer"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -135,7 +122,6 @@ def update_payment_status(customer_id, payment_status):
     conn.close()
 
 def get_customers_by_status(status):
-    """Get customers filtered by payment status"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -149,7 +135,6 @@ def get_customers_by_status(status):
     return customers
 
 def get_statistics():
-    """Get payment statistics"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -170,7 +155,6 @@ def get_statistics():
     }
 
 def bulk_update_payment_status(customer_ids, payment_status):
-    """Update payment status for multiple customers"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -190,7 +174,6 @@ def bulk_update_payment_status(customer_ids, payment_status):
     return cursor.rowcount
 
 def bulk_delete_customers(customer_ids):
-    """Delete multiple customers"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -203,7 +186,6 @@ def bulk_delete_customers(customer_ids):
     return rows_deleted
 
 def reset_monthly_payments():
-    """Reset all payments to Unpaid status at start of new month"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -211,4 +193,3 @@ def reset_monthly_payments():
     
     conn.commit()
     conn.close()
-

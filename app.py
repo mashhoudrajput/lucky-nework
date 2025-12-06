@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, send_file, flash
+from flask import Flask, render_template, request, jsonify, redirect, url_for, send_file, flash, session
+from functools import wraps
 from database import (
     init_db, add_customer, get_all_customers, get_customer_by_id,
     update_customer, delete_customer, update_payment_status,
@@ -8,41 +9,78 @@ from database import (
 import csv
 import io
 from datetime import datetime
+from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
+app.secret_key = 'lucky-network-secret-key-change-in-production'
 
-# Initialize database on startup
+USERS = {
+    'admin': generate_password_hash('admin@1122'),
+    'shafeeq': generate_password_hash('0789')
+}
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user' not in session:
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 init_db()
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+        
+        if username in USERS and check_password_hash(USERS[username], password):
+            session['user'] = username
+            flash('Login successful!', 'success')
+            return redirect(url_for('index'))
+        else:
+            flash('Invalid username or password', 'danger')
+    
+    if 'user' in session:
+        return redirect(url_for('index'))
+    
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.pop('user', None)
+    flash('You have been logged out', 'info')
+    return redirect(url_for('login'))
+
 @app.route('/')
+@login_required
 def index():
-    """Dashboard"""
     stats = get_statistics()
-    return render_template('index.html', stats=stats)
+    return render_template('index.html', stats=stats, username=session.get('user'))
 
 @app.route('/customers')
+@login_required
 def customers():
-    """Customer management page"""
     status_filter = request.args.get('status', 'All')
     customers = get_customers_by_status(status_filter)
     stats = get_statistics()
     return render_template('customers.html', customers=customers, current_filter=status_filter, stats=stats)
 
 @app.route('/recovery')
+@login_required
 def recovery():
-    """Payment recovery page"""
     status_filter = request.args.get('status', 'Unpaid')
     customers = get_customers_by_status(status_filter)
     stats = get_statistics()
     return render_template('recovery.html', customers=customers, current_filter=status_filter, stats=stats)
 
 @app.route('/api/customer', methods=['POST'])
+@login_required
 def create_customer():
-    """Create a new customer"""
     try:
         data = request.json
         
-        # Validate required fields
         if not data.get('name') or not data.get('name').strip():
             return jsonify({'success': False, 'error': 'Name is required'}), 400
         if not data.get('package') or not data.get('package').strip():
@@ -64,12 +102,11 @@ def create_customer():
         return jsonify({'success': False, 'error': str(e)}), 400
 
 @app.route('/api/customer/<int:customer_id>', methods=['PUT'])
+@login_required
 def update_customer_api(customer_id):
-    """Update customer information"""
     try:
         data = request.json
         
-        # Validate required fields
         if not data.get('name') or not data.get('name').strip():
             return jsonify({'success': False, 'error': 'Name is required'}), 400
         if not data.get('package') or not data.get('package').strip():
@@ -92,8 +129,8 @@ def update_customer_api(customer_id):
         return jsonify({'success': False, 'error': str(e)}), 400
 
 @app.route('/api/customer/<int:customer_id>', methods=['DELETE'])
+@login_required
 def delete_customer_api(customer_id):
-    """Delete a customer"""
     try:
         delete_customer(customer_id)
         return jsonify({'success': True}), 200
@@ -101,8 +138,8 @@ def delete_customer_api(customer_id):
         return jsonify({'success': False, 'error': str(e)}), 400
 
 @app.route('/api/customer/<int:customer_id>/payment', methods=['PUT'])
+@login_required
 def update_payment(customer_id):
-    """Update payment status"""
     try:
         data = request.json
         update_payment_status(customer_id, data['payment_status'])
@@ -111,8 +148,8 @@ def update_payment(customer_id):
         return jsonify({'success': False, 'error': str(e)}), 400
 
 @app.route('/api/customers/bulk-payment', methods=['PUT'])
+@login_required
 def bulk_update_payment():
-    """Bulk update payment status for multiple customers"""
     try:
         data = request.json
         customer_ids = [int(id) for id in data.get('customer_ids', [])]
@@ -127,8 +164,8 @@ def bulk_update_payment():
         return jsonify({'success': False, 'error': str(e)}), 400
 
 @app.route('/api/customers/bulk-delete', methods=['DELETE'])
+@login_required
 def bulk_delete():
-    """Bulk delete multiple customers"""
     try:
         data = request.json
         customer_ids = [int(id) for id in data.get('customer_ids', [])]
@@ -142,18 +179,16 @@ def bulk_delete():
         return jsonify({'success': False, 'error': str(e)}), 400
 
 @app.route('/export/customers')
+@login_required
 def export_customers():
-    """Export customers to CSV"""
     status_filter = request.args.get('status', 'All')
     customers = get_customers_by_status(status_filter)
     
     output = io.StringIO()
     writer = csv.writer(output)
     
-    # Write header
     writer.writerow(['ID', 'Name', 'Phone', 'Address', 'Package', 'Payment Amount (Rs.)', 'Payment Status', 'Last Payment Date'])
     
-    # Write data
     for customer in customers:
         writer.writerow([
             customer['id'],
@@ -177,8 +212,8 @@ def export_customers():
     )
 
 @app.route('/import/customers', methods=['POST'])
+@login_required
 def import_customers():
-    """Import customers from CSV file"""
     try:
         if 'file' not in request.files:
             return jsonify({'success': False, 'error': 'No file provided'}), 400
@@ -190,23 +225,20 @@ def import_customers():
         if not file.filename.endswith('.csv'):
             return jsonify({'success': False, 'error': 'File must be a CSV file'}), 400
         
-        # Read CSV file
         stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
         csv_reader = csv.DictReader(stream)
         
         imported = 0
         errors = []
         
-        for row_num, row in enumerate(csv_reader, start=2):  # Start at 2 (header is row 1)
+        for row_num, row in enumerate(csv_reader, start=2):
             try:
-                # Handle different column name variations
                 name = row.get('Name') or row.get('name') or row.get('NAME')
                 phone = row.get('Phone') or row.get('phone') or row.get('PHONE') or ''
                 address = row.get('Address') or row.get('address') or row.get('ADDRESS') or ''
                 package = row.get('Package') or row.get('package') or row.get('PACKAGE')
                 payment = row.get('Payment Amount') or row.get('Payment Amount (Rs.)') or row.get('payment_amount') or row.get('Payment')
                 
-                # Validate required fields
                 if not name or not name.strip():
                     errors.append(f"Row {row_num}: Name is required")
                     continue
@@ -238,41 +270,26 @@ def import_customers():
         return jsonify({
             'success': True,
             'imported': imported,
-            'errors': errors[:10]  # Limit errors shown
+            'errors': errors[:10]
         }), 200
         
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
 
 @app.route('/api/statistics')
+@login_required
 def get_stats():
-    """Get current statistics"""
     stats = get_statistics()
     return jsonify(stats)
 
-# For production, use gunicorn (see Dockerfile)
-# For development, run this directly: python app.py
 if __name__ == '__main__':
     import os
     debug_mode = os.getenv('FLASK_ENV') != 'production'
-    port = int(os.getenv('PORT', 5000))
     
     print("\n" + "="*50)
     print("ISP Payment Recovery System")
     print("="*50)
     print("\nServer starting...")
-    print(f"Access the application at: http://localhost:{port}")
-    
-    if not debug_mode:
-        print("\nRunning in production mode")
-        print("For production, use: gunicorn --bind 0.0.0.0:5000 app:app")
-    else:
-        print("\nRunning in development mode")
-        print("\nTo access from mobile/other devices:")
-        print("1. Find your computer's IP address")
-        print(f"2. Access: http://YOUR_IP:{port}")
-        print("3. Make sure firewall allows port", port)
-    
+    print("Access the application at: http://localhost:5000")
     print("\nPress Ctrl+C to stop the server\n")
-    app.run(debug=debug_mode, host='0.0.0.0', port=port)
-
+    app.run(debug=debug_mode, host='0.0.0.0', port=5000)
