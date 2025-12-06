@@ -1,0 +1,13 @@
+services:
+  isp-recovery:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_PATH=/app/data/isp_recovery.db
+    restart: unless-stopped
+    container_name: isp-payment-recovery
+

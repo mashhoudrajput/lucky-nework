@@ -1,0 +1,397 @@
+{% extends "base.html" %}
+
+{% block title %}Payment Recovery - ISP Payment Recovery{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+            <h1 class="text-white"><i class="bi bi-cash-coin"></i> Payment Recovery</h1>
+            <div class="d-flex gap-2 flex-wrap">
+                <button class="btn btn-info" onclick="document.getElementById('importFile').click()">
+                    <i class="bi bi-upload"></i> Import CSV
+                </button>
+                <input type="file" id="importFile" accept=".csv" style="display: none;" onchange="importCSV(event)">
+                <a href="{{ url_for('export_customers', status=current_filter) }}" class="btn btn-info">
+                    <i class="bi bi-download"></i> Export CSV
+                </a>
+                <button class="btn btn-primary" onclick="window.print()">
+                    <i class="bi bi-printer"></i> Print
+                </button>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-3 mb-2">
+                <div class="stats-card border-primary">
+                    <small class="text-muted d-block mb-1">Total Customers</small>
+                    <h2 class="text-primary mb-0">{{ stats.total }}</h2>
+                </div>
+            </div>
+            <div class="col-md-3 mb-2">
+                <div class="stats-card border-success">
+                    <small class="text-muted d-block mb-1">Paid</small>
+                    <h2 class="text-success mb-0">{{ stats.paid }}</h2>
+                </div>
+            </div>
+            <div class="col-md-3 mb-2">
+                <div class="stats-card border-danger">
+                    <small class="text-muted d-block mb-1">Unpaid</small>
+                    <h2 class="text-danger mb-0">{{ stats.unpaid }}</h2>
+                </div>
+            </div>
+            <div class="col-md-3 mb-2">
+                <div class="stats-card border-info">
+                    <small class="text-muted d-block mb-1">Showing</small>
+                    <h2 class="text-info mb-0">{{ customers|length }}</h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-6 mb-2 mb-md-0">
+                        <label class="form-label fw-bold">Filter by Payment Status:</label>
+                        <div class="btn-group w-100" role="group">
+                            <a href="{{ url_for('recovery', status='All') }}" class="btn {% if current_filter == 'All' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                                All Customers
+                            </a>
+                            <a href="{{ url_for('recovery', status='Paid') }}" class="btn {% if current_filter == 'Paid' %}btn-success{% else %}btn-outline-success{% endif %}">
+                                Paid
+                            </a>
+                            <a href="{{ url_for('recovery', status='Unpaid') }}" class="btn {% if current_filter == 'Unpaid' %}btn-danger{% else %}btn-outline-danger{% endif %}">
+                                Unpaid
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <button class="btn btn-outline-secondary" onclick="selectAll()">
+                            <i class="bi bi-check-all"></i> Select All
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="deselectAll()">
+                            <i class="bi bi-x-square"></i> Deselect All
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bulk Actions Bar -->
+        <div class="bulk-actions" id="bulkActions">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                    <strong id="selectedCount">0</strong> customer(s) selected
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-success" onclick="bulkMarkPaid()">
+                        <i class="bi bi-check-circle"></i> Mark Selected as Paid
+                    </button>
+                    <button class="btn btn-warning" onclick="bulkMarkUnpaid()">
+                        <i class="bi bi-x-circle"></i> Mark Selected as Unpaid
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    {% if current_filter == 'All' %}
+                        <i class="bi bi-list-ul"></i> All Customers List
+                    {% elif current_filter == 'Paid' %}
+                        <i class="bi bi-check-circle"></i> Paid Customers
+                    {% else %}
+                        <i class="bi bi-exclamation-circle"></i> Unpaid Customers (Remaining)
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th class="checkbox-cell">
+                                    <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()">
+                                </th>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Phone</th>
+                                <th>Address</th>
+                                <th>Package</th>
+                                <th>Payment</th>
+                                <th>Status</th>
+                                <th>Last Payment</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for customer in customers %}
+                            <tr>
+                                <td class="checkbox-cell">
+                                    <input type="checkbox" class="customer-checkbox" value="{{ customer.id }}" onchange="updateBulkActions()">
+                                </td>
+                                <td>{{ customer.id }}</td>
+                                <td><strong>{{ customer.name }}</strong></td>
+                                <td>{{ customer.phone }}</td>
+                                <td>{{ customer.address }}</td>
+                                <td>{{ customer.package }}</td>
+                                <td><strong class="currency">Rs. {{ "%.2f"|format(customer.payment_amount) }}</strong></td>
+                                <td>
+                                    <span class="badge {% if customer.payment_status == 'Paid' %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ customer.payment_status }}
+                                    </span>
+                                </td>
+                                <td>{{ customer.last_payment_date or 'N/A' }}</td>
+                                <td>
+                                    <div class="action-buttons">
+                                        {% if customer.payment_status == 'Unpaid' %}
+                                        <button class="btn btn-sm btn-success" onclick="markAsPaid({{ customer.id }}, '{{ customer.name }}')" title="Mark as Paid">
+                                            <i class="bi bi-check"></i>
+                                        </button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-warning" onclick="markAsUnpaid({{ customer.id }}, '{{ customer.name }}')" title="Mark as Unpaid">
+                                            <i class="bi bi-x"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="10" class="text-center text-muted py-4">
+                                    <i class="bi bi-inbox" style="font-size: 3rem; opacity: 0.3;"></i>
+                                    <p class="mt-2">No customers found</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% if customers %}
+            <div class="card-footer bg-light">
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>Total Amount: <span class="currency">Rs. {{ "%.2f"|format(customers | sum(attribute='payment_amount')) }}</span></strong>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <strong>Total Customers: {{ customers|length }}</strong>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 9999;"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let selectedCustomers = new Set();
+
+function updateBulkActions() {
+    selectedCustomers.clear();
+    document.querySelectorAll('.customer-checkbox:checked').forEach(cb => {
+        selectedCustomers.add(parseInt(cb.value));
+    });
+    
+    const count = selectedCustomers.size;
+    document.getElementById('selectedCount').textContent = count;
+    
+    const bulkActions = document.getElementById('bulkActions');
+    if (count > 0) {
+        bulkActions.classList.add('show');
+    } else {
+        bulkActions.classList.remove('show');
+    }
+    
+    document.getElementById('selectAllCheckbox').checked = 
+        count > 0 && count === document.querySelectorAll('.customer-checkbox').length;
+}
+
+function toggleSelectAll() {
+    const selectAll = document.getElementById('selectAllCheckbox').checked;
+    document.querySelectorAll('.customer-checkbox').forEach(cb => {
+        cb.checked = selectAll;
+    });
+    updateBulkActions();
+}
+
+function selectAll() {
+    document.getElementById('selectAllCheckbox').checked = true;
+    toggleSelectAll();
+}
+
+function deselectAll() {
+    document.getElementById('selectAllCheckbox').checked = false;
+    toggleSelectAll();
+}
+
+function bulkMarkPaid() {
+    if (selectedCustomers.size === 0) {
+        showToast('Please select at least one customer', 'warning');
+        return;
+    }
+    
+    if (!confirm(`Mark ${selectedCustomers.size} customer(s) as Paid?`)) {
+        return;
+    }
+    
+    fetch('/api/customers/bulk-payment', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            customer_ids: Array.from(selectedCustomers),
+            payment_status: 'Paid'
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showToast(`Successfully marked ${result.count} customer(s) as Paid`, 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast('Error: ' + (result.error || 'Failed to update'), 'danger');
+        }
+    })
+    .catch(error => {
+        showToast('Error: ' + error.message, 'danger');
+    });
+}
+
+function bulkMarkUnpaid() {
+    if (selectedCustomers.size === 0) {
+        showToast('Please select at least one customer', 'warning');
+        return;
+    }
+    
+    if (!confirm(`Mark ${selectedCustomers.size} customer(s) as Unpaid?`)) {
+        return;
+    }
+    
+    fetch('/api/customers/bulk-payment', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            customer_ids: Array.from(selectedCustomers),
+            payment_status: 'Unpaid'
+        })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showToast(`Successfully marked ${result.count} customer(s) as Unpaid`, 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast('Error: ' + (result.error || 'Failed to update'), 'danger');
+        }
+    })
+    .catch(error => {
+        showToast('Error: ' + error.message, 'danger');
+    });
+}
+
+function markAsPaid(id, name) {
+    fetch(`/api/customer/${id}/payment`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ payment_status: 'Paid' })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showToast(`"${name}" marked as Paid`, 'success');
+            setTimeout(() => location.reload(), 500);
+        } else {
+            showToast('Error: ' + (result.error || 'Failed to update'), 'danger');
+        }
+    })
+    .catch(error => {
+        showToast('Error: ' + error.message, 'danger');
+    });
+}
+
+function markAsUnpaid(id, name) {
+    fetch(`/api/customer/${id}/payment`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ payment_status: 'Unpaid' })
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showToast(`"${name}" marked as Unpaid`, 'warning');
+            setTimeout(() => location.reload(), 500);
+        } else {
+            showToast('Error: ' + (result.error || 'Failed to update'), 'danger');
+        }
+    })
+    .catch(error => {
+        showToast('Error: ' + error.message, 'danger');
+    });
+}
+
+function importCSV(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    showToast('Importing customers...', 'info');
+    
+    fetch('/import/customers', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            let message = `Successfully imported ${result.imported} customer(s)`;
+            if (result.errors && result.errors.length > 0) {
+                message += `. ${result.errors.length} error(s) occurred.`;
+            }
+            showToast(message, 'success');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showToast('Error: ' + (result.error || 'Failed to import'), 'danger');
+        }
+    })
+    .catch(error => {
+        showToast('Error: ' + error.message, 'danger');
+    });
+    
+    // Reset file input
+    event.target.value = '';
+}
+
+function showToast(message, type = 'info') {
+    const toastContainer = document.querySelector('.toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white bg-${type} border-0`;
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">${message}</div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
+    toastContainer.appendChild(toast);
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+    toast.addEventListener('hidden.bs.toast', () => toast.remove());
+}
+</script>
+{% endblock %}

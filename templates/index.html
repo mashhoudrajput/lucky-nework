@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - ISP Payment Recovery{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="mb-4 text-white"><i class="bi bi-speedometer2"></i> Dashboard</h1>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4 mb-3">
+        <div class="stats-card border-primary">
+            <i class="bi bi-people-fill text-primary" style="font-size: 2rem;"></i>
+            <h5 class="text-muted mt-2 mb-1">Total Customers</h5>
+            <h2 class="text-primary mb-0">{{ stats.total }}</h2>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="stats-card border-success">
+            <i class="bi bi-check-circle-fill text-success" style="font-size: 2rem;"></i>
+            <h5 class="text-muted mt-2 mb-1">Paid</h5>
+            <h2 class="text-success mb-0">{{ stats.paid }}</h2>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="stats-card border-danger">
+            <i class="bi bi-x-circle-fill text-danger" style="font-size: 2rem;"></i>
+            <h5 class="text-muted mt-2 mb-1">Unpaid</h5>
+            <h2 class="text-danger mb-0">{{ stats.unpaid }}</h2>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-lightning-charge"></i> Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <a href="{{ url_for('recovery', status='All') }}" class="btn btn-primary btn-lg w-100">
+                            <i class="bi bi-printer"></i> Print All Customers List
+                        </a>
+                        <small class="text-muted d-block mt-2">Generate complete list for recovery start</small>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <a href="{{ url_for('recovery') }}" class="btn btn-danger btn-lg w-100">
+                            <i class="bi bi-exclamation-circle"></i> View Unpaid Customers
+                        </a>
+                        <small class="text-muted d-block mt-2">Check remaining unpaid customers</small>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <a href="{{ url_for('customers') }}" class="btn btn-success btn-lg w-100">
+                            <i class="bi bi-person-plus"></i> Manage Customers
+                        </a>
+                        <small class="text-muted d-block mt-2">Add, edit, or delete customers</small>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <a href="{{ url_for('export_customers', status='All') }}" class="btn btn-info btn-lg w-100">
+                            <i class="bi bi-download"></i> Export All to CSV
+                        </a>
+                        <small class="text-muted d-block mt-2">Download customer data</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-calendar-check"></i> Monthly Recovery Workflow</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <div class="text-center p-3 bg-light rounded">
+                            <div class="badge bg-primary rounded-circle p-3 mb-2" style="font-size: 1.5rem;">1</div>
+                            <h6 class="fw-bold">Start of Month</h6>
+                            <p class="small text-muted mb-0">Print/export complete customer list</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="text-center p-3 bg-light rounded">
+                            <div class="badge bg-success rounded-circle p-3 mb-2" style="font-size: 1.5rem;">2</div>
+                            <h6 class="fw-bold">During Recovery</h6>
+                            <p class="small text-muted mb-0">Update payment status as you collect</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="text-center p-3 bg-light rounded">
+                            <div class="badge bg-warning rounded-circle p-3 mb-2" style="font-size: 1.5rem;">3</div>
+                            <h6 class="fw-bold">Next Day Check</h6>
+                            <p class="small text-muted mb-0">View remaining unpaid customers</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="text-center p-3 bg-light rounded">
+                            <div class="badge bg-info rounded-circle p-3 mb-2" style="font-size: 1.5rem;">4</div>
+                            <h6 class="fw-bold">Continue</h6>
+                            <p class="small text-muted mb-0">Repeat until all payments collected</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
