@@ -21,7 +21,19 @@ A web-based application for managing internet service provider customer payments
 
 ## Installation & Setup
 
-### Option 1: Using Docker (Recommended)
+### Option 1: Cloud Server Deployment (Production)
+
+For deploying on a cloud server (AWS, DigitalOcean, Azure, etc.), see [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
+
+**Quick start:**
+```bash
+git clone https://github.com/mashhoudrajput/lucky-nework.git
+cd lucky-nework
+chmod +x deploy.sh
+./deploy.sh
+```
+
+### Option 2: Using Docker (Local Development)
 
 1. **Install Docker Desktop**
    - Download from https://www.docker.com/products/docker-desktop/

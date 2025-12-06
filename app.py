@@ -250,19 +250,29 @@ def get_stats():
     stats = get_statistics()
     return jsonify(stats)
 
+# For production, use gunicorn (see Dockerfile)
+# For development, run this directly: python app.py
 if __name__ == '__main__':
     import os
     debug_mode = os.getenv('FLASK_ENV') != 'production'
+    port = int(os.getenv('PORT', 5000))
     
     print("\n" + "="*50)
     print("ISP Payment Recovery System")
     print("="*50)
     print("\nServer starting...")
-    print("Access the application at: http://localhost:5000")
-    print("\nTo access from mobile/other devices:")
-    print("1. Find your computer's IP address")
-    print("2. Access: http://YOUR_IP:5000")
-    print("3. Make sure firewall allows port 5000")
+    print(f"Access the application at: http://localhost:{port}")
+    
+    if not debug_mode:
+        print("\nRunning in production mode")
+        print("For production, use: gunicorn --bind 0.0.0.0:5000 app:app")
+    else:
+        print("\nRunning in development mode")
+        print("\nTo access from mobile/other devices:")
+        print("1. Find your computer's IP address")
+        print(f"2. Access: http://YOUR_IP:{port}")
+        print("3. Make sure firewall allows port", port)
+    
     print("\nPress Ctrl+C to stop the server\n")
-    app.run(debug=debug_mode, host='0.0.0.0', port=5000)
+    app.run(debug=debug_mode, host='0.0.0.0', port=port)
 

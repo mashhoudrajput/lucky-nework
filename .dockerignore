@@ -14,4 +14,7 @@ ENV/
 .git/
 .gitignore
 README.md
-
+README_DOCKER.md
+*.md
+data/
+*.log
